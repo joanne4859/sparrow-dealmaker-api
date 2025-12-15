@@ -1,6 +1,6 @@
 // api/start-checkout.js
 
-import { getAccessToken } from "./token.js"; // adjust if your token.js exports differently
+import { getAccessToken } from "./_dealmakerAuth.js";
 
 const DEAL_ID = 4127;
 
