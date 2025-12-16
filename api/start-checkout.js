@@ -13,7 +13,7 @@ function toFormUrlEncoded(data) {
   const params = new URLSearchParams();
   Object.entries(data).forEach(([k, v]) => {
     // Only append if the value is not undefined, null, or empty string
-    if (v === undefined || v === null || v === "") return;
+    if (v === undefined || v === null) return;
     params.append(k, String(v));
   });
   return params.toString();
@@ -84,6 +84,7 @@ export default async function handler(req, res) {
       city,
       region,
       postal_code,
+      investor_type
     };
 
     const profileRes = await fetch(
