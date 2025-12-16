@@ -119,7 +119,7 @@ export default async function handler(req, res) {
       first_name,
       last_name,
       phone_number,
-      investment_value: Number(investment_value),
+      investment_value: Number(investment_value).toFixed(2),
       allocation_unit: "amount",
       state: "draft",
     };
