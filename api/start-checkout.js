@@ -58,8 +58,14 @@ export default async function handler(req, res) {
     // Optional
     const unit2 = body.unit2;
     
-    // NOTE: us_accredited_category and ca_accredited_investor are intentionally 
-    // removed here to force DealMaker to ask the user on the checkout page.
+    // OPTIONAL FIELD: is_accredited (for your internal tracking)
+    // NOTE: This defaults to false if not present, and is NOT sent to DealMaker.
+    const is_accredited = body.is_accredited || false; 
+
+    if (is_accredited) {
+        // You can log this for your internal Vercel logs
+        console.log(`Investor ${email} selected 'Accredited' on the landing page.`);
+    }
 
     // 1) OAuth token
     const accessToken = await getAccessToken();
