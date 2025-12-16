@@ -140,19 +140,42 @@ export default async function handler(req, res) {
 
     const investorJson = await investorRes.json();
 
-    // access_link is what you redirect to
-    const access_link = investorJson.access_link;
-    if (!access_link) {
-      return res.status(500).json({
-        error: "No access_link returned from Dealmaker",
-        investor: investorJson,
+    // 4) Get OTP access link (this triggers phone verification -> then checkout flow)
+    const dealInvestorId = investorJson.id;
+
+    const otpRes = await fetch(
+      `${process.env.DEALMAKER_BASE_URL}/deals/${DEAL_ID}/investors/${dealInvestorId}/otp_access_link`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!otpRes.ok) {
+      const text = await otpRes.text();
+      return res.status(otpRes.status).json({
+        error: "Failed to get OTP access link",
+        details: text,
+        deal_investor_id: dealInvestorId,
       });
     }
 
-    // Return what Webflow needs to redirect + ids for your logs
+    const otpJson = await otpRes.json();
+    const redirect_url = otpJson.access_link;
+
+    if (!redirect_url) {
+      return res.status(500).json({
+        error: "No access_link returned from otp_access_link",
+        otp: otpJson,
+      });
+    }
+
     return res.status(200).json({
-      redirect_url: access_link,
-      deal_investor_id: investorJson.id,
+      redirect_url,
+      deal_investor_id: dealInvestorId,
       investor_profile_id,
     });
   } catch (err) {
