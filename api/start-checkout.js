@@ -54,10 +54,25 @@ export default async function handler(req, res) {
     // Investment fields
     const investment_value = requireField(body, "investment_value"); // dollars as number/string
 
-    // Optional
+    // Optional fields
     const unit2 = body.unit2;
-    const us_accredited_category = body.us_accredited_category; // optional
-    const ca_accredited_investor = body.ca_accredited_investor; // optional
+
+    // >> NEW ACCREDITATION LOGIC START
+    const is_accredited = body.is_accredited || false; // From WebFlow form
+
+    let us_accredited_category = null;
+    let ca_accredited_investor = false;
+
+    if (is_accredited) {
+        if (country.toUpperCase() === "CA" || country.toUpperCase() === "CANADA") {
+            // Set CA status to true if country is Canada
+            ca_accredited_investor = true;
+        } 
+        // For US, we leave us_accredited_category as null, 
+        // which forces the user to select the category on the DealMaker site (Option C).
+    }
+    // >> NEW ACCREDITATION LOGIC END
+
 
     // 1) OAuth token
     const accessToken = await getAccessToken();
