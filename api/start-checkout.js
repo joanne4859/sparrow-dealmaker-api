@@ -83,8 +83,7 @@ export default async function handler(req, res) {
       unit2,
       city,
       region,
-      postal_code,
-      investor_type
+      postal_code
     };
 
     const profileRes = await fetch(
