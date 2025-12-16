@@ -12,6 +12,7 @@ function requireField(obj, key) {
 function toFormUrlEncoded(data) {
   const params = new URLSearchParams();
   Object.entries(data).forEach(([k, v]) => {
+    // Only append if the value is not undefined, null, or empty string
     if (v === undefined || v === null || v === "") return;
     params.append(k, String(v));
   });
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
     const last_name = requireField(body, "last_name");
     const phone_number = requireField(body, "phone_number");
 
-    // Required profile fields (you chose to collect everything)
+    // Required profile fields (collected on WebFlow)
     const date_of_birth = requireField(body, "date_of_birth"); // expect YYYY-MM-DD
     const taxpayer_id = requireField(body, "taxpayer_id");
     const country = requireField(body, "country");
@@ -54,25 +55,11 @@ export default async function handler(req, res) {
     // Investment fields
     const investment_value = requireField(body, "investment_value"); // dollars as number/string
 
-    // Optional fields
+    // Optional
     const unit2 = body.unit2;
-
-    // >> NEW ACCREDITATION LOGIC START
-    const is_accredited = body.is_accredited || false; // From WebFlow form
-
-    let us_accredited_category = null;
-    let ca_accredited_investor = false;
-
-    if (is_accredited) {
-        if (country.toUpperCase() === "CA" || country.toUpperCase() === "CANADA") {
-            // Set CA status to true if country is Canada
-            ca_accredited_investor = true;
-        } 
-        // For US, we leave us_accredited_category as null, 
-        // which forces the user to select the category on the DealMaker site (Option C).
-    }
-    // >> NEW ACCREDITATION LOGIC END
-
+    
+    // NOTE: us_accredited_category and ca_accredited_investor are intentionally 
+    // removed here to force DealMaker to ask the user on the checkout page.
 
     // 1) OAuth token
     const accessToken = await getAccessToken();
@@ -80,8 +67,6 @@ export default async function handler(req, res) {
     // 2) Create individual investor profile (FORM URLENCODED)
     const profilePayload = {
       email,
-      us_accredited_category,
-      ca_accredited_investor,
       first_name,
       last_name,
       date_of_birth,
