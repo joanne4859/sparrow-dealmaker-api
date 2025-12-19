@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ ok: false, error: "Method not allowed" });
 
   const id = req.query.id;
-  if (!id) return res.status(400).json({ ok: false, error: "Missing ?id=DEAL_ID (example: ?id=4127)" });
+  if (!id) return res.status(400).json({ ok: false, error: "Missing ?id=DEAL_ID (example: ?id=4210)" });
 
   try {
     const token = await getAccessToken();
