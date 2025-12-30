@@ -72,6 +72,7 @@ export default async function handler(req, res) {
 
     // 2) Create individual investor profile (FORM URLENCODED)
     const profilePayload = {
+      investor_type: "individual",
       email,
       first_name,
       last_name,
