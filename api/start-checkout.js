@@ -120,8 +120,7 @@ export default async function handler(req, res) {
       last_name,
       phone_number,
       investment_value: Number(investment_value).toFixed(2),
-      allocation_unit: "amount",
-      state: "draft",
+      allocation_unit: "amount"
     };
 
     const investorRes = await fetch(
