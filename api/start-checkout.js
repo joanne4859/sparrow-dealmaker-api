@@ -149,35 +149,7 @@ export default async function handler(req, res) {
     // 4) Get OTP access link (this triggers phone verification -> then checkout flow)
     const dealInvestorId = investorJson.id;
 
-    const otpRes = await fetch(
-      `${process.env.DEALMAKER_BASE_URL}/deals/${DEAL_ID}/investors/${dealInvestorId}/otp_access_link`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
-    );
-
-    if (!otpRes.ok) {
-      const text = await otpRes.text();
-      return res.status(otpRes.status).json({
-        error: "Failed to get OTP access link",
-        details: text,
-        deal_investor_id: dealInvestorId,
-      });
-    }
-
-    const otpJson = await otpRes.json();
-    const redirect_url = otpJson.access_link;
-
-    if (!redirect_url) {
-      return res.status(500).json({
-        error: "No access_link returned from otp_access_link",
-        otp: otpJson,
-      });
-    }
+    const redirect_url = `https://app.dealmaker.tech/deals/${DEAL_ID}/investors/${dealInvestorId}/otp_access`;
 
     return res.status(200).json({
       redirect_url,
