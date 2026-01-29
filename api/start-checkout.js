@@ -12,20 +12,41 @@ function requireField(obj, key) {
 function toFormUrlEncoded(data) {
   const params = new URLSearchParams();
   Object.entries(data).forEach(([k, v]) => {
-    // Only append if the value is not undefined, null, or empty string
     if (v === undefined || v === null) return;
     params.append(k, String(v));
   });
   return params.toString();
 }
 
+// NEW: Function to generate DealMaker tags from UTMs
+function generateDealMakerTags(utmParams) {
+  const tags = [];
+  
+  // Add each UTM parameter as a tag
+  if (utmParams.utm_source) {
+    tags.push(`utm_source=${utmParams.utm_source}`);
+  }
+  if (utmParams.utm_medium) {
+    tags.push(`utm_medium=${utmParams.utm_medium}`);
+  }
+  if (utmParams.utm_campaign) {
+    tags.push(`utm_campaign=${utmParams.utm_campaign}`);
+  }
+  if (utmParams.utm_content) {
+    tags.push(`utm_content=${utmParams.utm_content}`);
+  }
+  if (utmParams.utm_term) {
+    tags.push(`utm_term=${utmParams.utm_term}`);
+  }
+  
+  return tags;
+}
+
 export default async function handler(req, res) {
-  // --- CORS (for Webflow -> Vercel calls) ---
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Preflight request (browser sends OPTIONS before POST)
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -38,16 +59,27 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
     // STEP 1: VALIDATE MINIMAL REQUIRED FIELDS
-    // Only require email and investment amount initially
     const email = requireField(body, "email");
     const investment_value = requireField(body, "investment_value");
 
-    // Optional fields for initial submission
+    // Extract UTM parameters from request
+    const utmParams = {
+      utm_source: body.utm_source || '',
+      utm_medium: body.utm_medium || '',
+      utm_campaign: body.utm_campaign || '',
+      utm_content: body.utm_content || '',
+      utm_term: body.utm_term || ''
+    };
+
+    // Generate tags array from UTMs
+    const tags = generateDealMakerTags(utmParams);
+
+    console.log('Processing with UTM tags:', tags);
+
+    // Optional fields
     const first_name = body.first_name || "";
     const last_name = body.last_name || "";
     const phone_number = body.phone_number || "";
-
-    // Optional profile fields (can be collected later in checkout)
     const date_of_birth = body.date_of_birth;
     const taxpayer_id = body.taxpayer_id;
     const country = body.country;
@@ -56,28 +88,24 @@ export default async function handler(req, res) {
     const region = body.region;
     const postal_code = body.postal_code;
     const unit2 = body.unit2;
-    
-    // Optional: is_accredited (for internal tracking)
     const is_accredited = body.is_accredited || false;
-
-    if (is_accredited) {
-      console.log(`Investor ${email} selected 'Accredited' on the landing page.`);
-    }
 
     // Get OAuth token
     const accessToken = await getAccessToken();
 
-    // STEP 2: CREATE INVESTMENT FIRST (PRIORITY)
-    // This ensures the investment is recorded even if profile creation fails
+    // STEP 2: CREATE INVESTMENT WITH TAGS
     const investorPayload = {
       email,
       email_confirmation: email,
-      first_name: first_name || email.split("@")[0], // Use email prefix as fallback
+      first_name: first_name || email.split("@")[0],
       last_name: last_name || "Unknown",
       phone_number: phone_number || "",
       investment_value: Number(investment_value).toFixed(2),
-      allocation_unit: "amount"
+      allocation_unit: "amount",
+      tags: tags  // ADD TAGS HERE
     };
+
+    console.log('Creating investor with payload:', investorPayload);
 
     const investorRes = await fetch(
       `${process.env.DEALMAKER_BASE_URL}/deals/${DEAL_ID}/investors`,
@@ -101,7 +129,6 @@ export default async function handler(req, res) {
         errorDetails = { raw: errorText };
       }
 
-      // Provide specific error feedback
       return res.status(investorRes.status).json({
         error: "Failed to create investment",
         message: "Unable to process your investment. Please check the information provided.",
@@ -115,11 +142,11 @@ export default async function handler(req, res) {
     const dealInvestorId = investorJson.id;
 
     console.log(`✓ Investment created successfully: Deal Investor ID ${dealInvestorId}`);
+    console.log(`✓ UTM tags applied: ${tags.join(', ')}`);
 
     // STEP 3: CREATE INVESTOR PROFILE (IF DATA AVAILABLE)
     let investor_profile_id = null;
     
-    // Only attempt to create profile if we have the minimum required profile fields
     const hasMinimalProfileData = date_of_birth && taxpayer_id && country && 
                                    street_address && city && region && postal_code;
 
@@ -175,22 +202,11 @@ export default async function handler(req, res) {
 
           if (patchRes.ok) {
             console.log(`✓ Investment updated with profile ID ${investor_profile_id}`);
-          } else {
-            const patchError = await patchRes.text();
-            console.warn(`⚠ Failed to link profile to investment: ${patchError}`);
-            // Don't fail the request - investment is still created
           }
-        } else {
-          const profileError = await profileRes.text();
-          console.warn(`⚠ Profile creation failed (non-blocking): ${profileError}`);
-          // Don't fail the request - investment is still created
         }
       } catch (profileErr) {
         console.warn(`⚠ Profile creation error (non-blocking): ${profileErr.message}`);
-        // Don't fail the request - investment is still created
       }
-    } else {
-      console.log(`ℹ Skipping profile creation - insufficient data provided (will be collected in checkout)`);
     }
 
     // STEP 5: GENERATE OTP ACCESS LINK
@@ -202,16 +218,15 @@ export default async function handler(req, res) {
       deal_investor_id: dealInvestorId,
       investor_profile_id: investor_profile_id || null,
       profile_created: !!investor_profile_id,
+      utm_tags_applied: tags,
       message: investor_profile_id 
         ? "Investment and profile created successfully"
         : "Investment created successfully. Additional information will be collected during checkout."
     });
 
   } catch (err) {
-    // Improved error handling with specific feedback
     const errorMessage = err?.message || String(err);
     
-    // Check if it's a missing field error
     if (errorMessage.includes("Missing required field")) {
       const fieldName = errorMessage.split(":")[1]?.trim();
       return res.status(400).json({
@@ -222,7 +237,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Generic server error
     return res.status(500).json({
       error: "Server error",
       message: "An unexpected error occurred. Please try again or contact support.",
