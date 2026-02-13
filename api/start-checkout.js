@@ -231,7 +231,7 @@ export default async function handler(req, res) {
       const fieldName = errorMessage.split(":")[1]?.trim();
       return res.status(400).json({
         error: "Missing required information",
-        message: `Please provide your ${fieldName || "required information"}`,
+        message: "Please provide your information.",
         field: fieldName,
         status_code: 400
       });
