@@ -42,6 +42,13 @@ function generateDealMakerTags(utmParams) {
   return tags;
 }
 
+function normalizePhone(phone) {
+  if (!phone) return "";
+  let digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) digits = "1" + digits; // assume US
+  return "+" + digits;
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -99,7 +106,7 @@ export default async function handler(req, res) {
       email_confirmation: email,
       first_name: first_name || email.split("@")[0],
       last_name: last_name || "Unknown",
-      phone_number: phone_number || "",
+      phone_number: normalizePhone(phone_number),
       investment_value: Number(investment_value).toFixed(2),
       allocation_unit: "amount",
       tags: tags  // ADD TAGS HERE
@@ -159,7 +166,7 @@ export default async function handler(req, res) {
           last_name: last_name || "Unknown",
           date_of_birth,
           taxpayer_id,
-          phone_number: phone_number || "",
+          phone_number: normalizePhone(phone_number),
           country,
           street_address,
           unit2,
